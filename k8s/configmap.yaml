@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: streamingapp-config
+  labels:
+    app.kubernetes.io/part-of: streamingapp
+data:
+  # Mongo connection string. "mongo" is the headless Service name we create in
+  # the next step; inside the cluster it resolves to the MongoDB pod.
+  MONGO_URI: "mongodb://mongo:27017/streamingapp"
+
+  # CORS allow-list (comma-separated; the app splits on commas).
+  # Includes the eventual Ingress host and localhost so it works in every phase.
+  CLIENT_URLS: "http://streamingapp.local,http://localhost:3000"
+
+  # AWS non-secret settings. Region + bucket are only used once we wire up S3
+  # for the upload/playback tests; blank/placeholder is fine until then.
+  AWS_REGION: "ap-south-1"
+  AWS_S3_BUCKET: ""
+  AWS_CDN_URL: ""
+
+  # Streaming service's public base URL, used to build playback links.
+  # Points at the Ingress host so links resolve through the single entry point.
+  STREAMING_PUBLIC_URL: "http://streamingapp.local"
