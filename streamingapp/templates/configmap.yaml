@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+data:
+  MONGO_URI: "mongodb://{{ .Release.Name }}-mongo:{{ .Values.mongo.port }}/streamingapp"
+  CLIENT_URLS: {{ .Values.config.clientUrls | quote }}
+  AWS_REGION: {{ .Values.config.awsRegion | quote }}
+  AWS_S3_BUCKET: {{ .Values.config.awsS3Bucket | quote }}
+  AWS_CDN_URL: {{ .Values.config.awsCdnUrl | quote }}
+  STREAMING_PUBLIC_URL: {{ .Values.config.streamingPublicUrl | quote }}

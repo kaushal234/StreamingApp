@@ -1,0 +1,82 @@
+# =============================================================================
+# values.yaml — the single source of truth for the whole stack.
+# Nothing in templates/ is hardcoded; every tunable lives here.
+# =============================================================================
+
+# Shared, non-secret config -> rendered into the ConfigMap and injected via envFrom.
+config:
+  clientUrls: "http://streamingapp.local,http://localhost:3000"
+  awsRegion: "ap-south-1"
+  awsS3Bucket: ""
+  awsCdnUrl: ""
+  streamingPublicUrl: "http://streamingapp.local"
+
+# Sensitive values -> rendered into the Secret. Keep AWS blank until the S3 phase.
+secret:
+  jwtSecret: "localdevsecret-change-me"
+  awsAccessKeyId: ""
+  awsSecretAccessKey: ""
+
+# MongoDB (StatefulSet + headless Service + PVC).
+mongo:
+  image: mongo
+  tag: "6"
+  port: 27017
+  storageSize: 5Gi
+
+# The five application services. frontend differs: sharedEnv false, serves on 80,
+# probes "/". The four backends share env (ConfigMap + Secret) and probe healthPath.
+services:
+  auth:
+    image: kaushalhub234/streaming-auth
+    tag: "1.0.0"
+    replicas: 2
+    port: 3001
+    healthPath: /health
+    sharedEnv: true
+  streaming:
+    image: kaushalhub234/streaming-stream
+    tag: "1.0.0"
+    replicas: 2
+    port: 3002
+    healthPath: /api/health
+    sharedEnv: true
+  admin:
+    image: kaushalhub234/streaming-admin
+    tag: "1.0.0"
+    replicas: 2
+    port: 3003
+    healthPath: /api/health
+    sharedEnv: true
+  chat:
+    image: kaushalhub234/streaming-chat
+    tag: "1.0.0"
+    replicas: 1
+    port: 3004
+    healthPath: /api/health
+    sharedEnv: true
+  frontend:
+    image: kaushalhub234/streaming-frontend
+    tag: "1.1.2"
+    replicas: 2
+    port: 80
+    healthPath: /
+    sharedEnv: false
+
+# Zero-downtime rolling-update strategy applied to every app Deployment.
+rollingUpdate:
+  maxUnavailable: 0
+  maxSurge: 1
+
+# Ingress: one host, five backends (routing lives in templates/ingress.yaml).
+ingress:
+  host: streamingapp.local
+  className: nginx
+
+# Default resource requests/limits for the app services.
+resources:
+  requests:
+    cpu: "50m"
+    memory: "128Mi"
+  limits:
+    memory: "256Mi"

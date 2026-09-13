@@ -1,0 +1,57 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    app.kubernetes.io/part-of: {{ .Release.Name }}
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-chat
+                port:
+                  number: {{ .Values.services.chat.port }}
+          - path: /api/streaming
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-streaming
+                port:
+                  number: {{ .Values.services.streaming.port }}
+          - path: /api/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-admin
+                port:
+                  number: {{ .Values.services.admin.port }}
+          - path: /api/chat
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-chat
+                port:
+                  number: {{ .Values.services.chat.port }}
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-auth
+                port:
+                  number: {{ .Values.services.auth.port }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-frontend
+                port:
+                  number: {{ .Values.services.frontend.port }}
