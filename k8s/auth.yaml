@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# authService — Deployment + ClusterIP Service.
+#
+# Image is pulled from Docker Hub (the 1.0.0 tag you pushed in Phase 2).
+# envFrom injects the whole ConfigMap + Secret as env vars; the keys already
+# match the names the app reads, so no per-variable wiring is needed.
+#
+# NOTE: auth's health endpoint is /health (the other three backends use
+# /api/health). The probes below target /health accordingly.
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth
+  labels:
+    app: auth
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth
+  template:
+    metadata:
+      labels:
+        app: auth
+    spec:
+      containers:
+        - name: auth
+          image: kaushalhub234/streaming-auth:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3001
+          env:
+            - name: PORT           # per-service, so set explicitly here
+              value: "3001"
+          envFrom:
+            - configMapRef:
+                name: streamingapp-config
+            - secretRef:
+                name: streamingapp-secret
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3001
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth
+  labels:
+    app: auth
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  type: ClusterIP
+  selector:
+    app: auth
+  ports:
+    - name: http
+      port: 3001
+      targetPort: 3001
