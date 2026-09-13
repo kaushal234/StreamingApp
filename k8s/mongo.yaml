@@ -1,0 +1,83 @@
+# ---------------------------------------------------------------------------
+# MongoDB: a headless Service + a StatefulSet with its own PersistentVolumeClaim.
+#
+# Why a StatefulSet (not a Deployment): the database needs a stable identity and
+# storage that survives restarts. The StatefulSet gives the pod a fixed name
+# (mongo-0) and, via volumeClaimTemplates, a PVC that is re-attached whenever the
+# pod restarts — so your data persists.
+#
+# Why a headless Service (clusterIP: None): it gives stable DNS straight to the
+# pod instead of load-balancing across a virtual IP. The name "mongo" resolves
+# inside the cluster, which is what MONGO_URI in the ConfigMap points at.
+# ---------------------------------------------------------------------------
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  clusterIP: None        # headless — required for StatefulSet stable DNS
+  selector:
+    app: mongo
+  ports:
+    - name: mongo
+      port: 27017
+      targetPort: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  labels:
+    app: mongo
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  serviceName: mongo     # ties the StatefulSet to the headless Service above
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:6
+          ports:
+            - name: mongo
+              containerPort: 27017
+          volumeMounts:
+            - name: mongo-data
+              mountPath: /data/db          # MongoDB's data directory
+          # Probes: is the mongod process accepting connections on 27017?
+          # A simple TCP check on the port is enough and needs no extra tools.
+          readinessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket:
+              port: 27017
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "100m"
+              memory: "256Mi"
+            limits:
+              memory: "512Mi"
+  # volumeClaimTemplates creates a PVC per pod (mongo-data-mongo-0). Minikube's
+  # default StorageClass provisions the backing volume automatically.
+  volumeClaimTemplates:
+    - metadata:
+        name: mongo-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi
