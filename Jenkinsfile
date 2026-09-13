@@ -48,9 +48,15 @@ pipeline {
     post {
         success {
             echo "All 5 images built and pushed to ECR with tag ${BUILD_NUMBER}"
+            sh """
+                aws sns publish --topic-arn arn:aws:sns:ap-south-1:465708537536:streamingapp-deployments --subject "Jenkins Build Success" --message "StreamingApp Jenkins build ${BUILD_NUMBER} succeeded - all 5 images built and pushed to ECR." --region ap-south-1
+            """
         }
         failure {
             echo "Pipeline failed - check the stage logs above"
+            sh """
+                aws sns publish --topic-arn arn:aws:sns:ap-south-1:465708537536:streamingapp-deployments --subject "Jenkins Build Failed" --message "StreamingApp Jenkins build ${BUILD_NUMBER} failed - check the pipeline logs." --region ap-south-1
+            """
         }
     }
 }

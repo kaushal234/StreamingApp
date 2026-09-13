@@ -1,0 +1,16 @@
+services:
+  auth:
+    image: 465708537536.dkr.ecr.ap-south-1.amazonaws.com/streaming-auth
+    tag: "1.0.0"
+  streaming:
+    image: 465708537536.dkr.ecr.ap-south-1.amazonaws.com/streaming-stream
+    tag: "1.0.0"
+  admin:
+    image: 465708537536.dkr.ecr.ap-south-1.amazonaws.com/streaming-admin
+    tag: "1.0.0"
+  chat:
+    image: 465708537536.dkr.ecr.ap-south-1.amazonaws.com/streaming-chat
+    tag: "1.0.0"
+  frontend:
+    image: 465708537536.dkr.ecr.ap-south-1.amazonaws.com/streaming-frontend
+    tag: "1.1.3"
