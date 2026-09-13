@@ -1,0 +1,73 @@
+# ---------------------------------------------------------------------------
+# Ingress — one host (streamingapp.local), five backends, routed by path.
+#
+# Path ordering is by specificity: the more specific /api/streaming, /api/admin,
+# /api/chat and /socket.io are matched before the catch-all /api (which goes to
+# auth, since auth owns the bare /api/login, /api/register, etc.). nginx-ingress
+# matches the longest prefix first, so no path rewriting is needed anywhere.
+#
+# WebSocket: chatService serves Socket.IO on /socket.io. The annotations below
+# raise timeouts so long-lived WebSocket connections aren't cut off. (ingress-
+# nginx upgrades Connection/Upgrade headers automatically; the timeouts are the
+# part that matters for keeping the socket alive.)
+# ---------------------------------------------------------------------------
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: streamingapp
+  labels:
+    app.kubernetes.io/part-of: streamingapp
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: streamingapp.local
+      http:
+        paths:
+          # --- most specific first ---
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: chat
+                port:
+                  number: 3004
+          - path: /api/streaming
+            pathType: Prefix
+            backend:
+              service:
+                name: streaming
+                port:
+                  number: 3002
+          - path: /api/admin
+            pathType: Prefix
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3003
+          - path: /api/chat
+            pathType: Prefix
+            backend:
+              service:
+                name: chat
+                port:
+                  number: 3004
+          # --- catch-all for auth's bare /api/* routes (login, register, ...) ---
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: auth
+                port:
+                  number: 3001
+          # --- everything else goes to the React SPA ---
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
