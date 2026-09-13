@@ -1,0 +1,70 @@
+# ---------------------------------------------------------------------------
+# streamingService — Deployment + ClusterIP Service.
+# Same pattern as auth. Port 3002. Health endpoint is /api/health.
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: streaming
+  labels:
+    app: streaming
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: streaming
+  template:
+    metadata:
+      labels:
+        app: streaming
+    spec:
+      containers:
+        - name: streaming
+          image: kaushalhub234/streaming-stream:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3002
+          env:
+            - name: PORT
+              value: "3002"
+          envFrom:
+            - configMapRef:
+                name: streamingapp-config
+            - secretRef:
+                name: streamingapp-secret
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3002
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3002
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: streaming
+  labels:
+    app: streaming
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  type: ClusterIP
+  selector:
+    app: streaming
+  ports:
+    - name: http
+      port: 3002
+      targetPort: 3002

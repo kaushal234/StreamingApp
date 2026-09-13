@@ -1,0 +1,79 @@
+# ---------------------------------------------------------------------------
+# chatService — Deployment + ClusterIP Service.
+# Same pattern as auth. Port 3004. Health endpoint is /api/health.
+#
+# Chat also serves Socket.IO (WebSocket) on this same 3004 port. At the Service
+# layer nothing special is needed — the ClusterIP Service forwards both the REST
+# and WebSocket traffic. The WebSocket-upgrade handling is configured later at
+# the Ingress (Phase 4), not here.
+#
+# One caveat for later: if chat is scaled to multiple replicas, WebSocket
+# clients need sticky sessions so a connection stays pinned to one pod. For now
+# replicas:1 keeps it simple and correct; we revisit stickiness at the Ingress.
+# ---------------------------------------------------------------------------
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat
+  labels:
+    app: chat
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: chat
+  template:
+    metadata:
+      labels:
+        app: chat
+    spec:
+      containers:
+        - name: chat
+          image: kaushalhub234/streaming-chat:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 3004
+          env:
+            - name: PORT
+              value: "3004"
+          envFrom:
+            - configMapRef:
+                name: streamingapp-config
+            - secretRef:
+                name: streamingapp-secret
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3004
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3004
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "128Mi"
+            limits:
+              memory: "256Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat
+  labels:
+    app: chat
+    app.kubernetes.io/part-of: streamingapp
+spec:
+  type: ClusterIP
+  selector:
+    app: chat
+  ports:
+    - name: http
+      port: 3004
+      targetPort: 3004
